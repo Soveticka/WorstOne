@@ -25,7 +25,15 @@ intents.members = True
 intents.guilds = True
 intents.emojis = True
 
-bot = commands.Bot(command_prefix='.', description=description, intents=intents)
+
+def get_prefix(client, message):
+    with open("json/guild/settings.json", 'r') as f:
+        settings = json.load(f)
+
+    return str(settings[f'{message.guild.id}']['prefix'])
+
+
+bot = commands.Bot(command_prefix=get_prefix, description=description, intents=intents)
 bot.remove_command('help')
 
 
@@ -40,14 +48,33 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
-    database.registerToDB(guild)
+    with open("json/guild/guilds.json", "r") as f:
+        guilds = json.load(f)
+
+    await updateGuild(guilds, guild)
+
+    with open("json/guild/guilds.json", "w") as f:
+        json.dump(guilds,f)
     await on_ready()
 
 
 @bot.event
 async def on_guild_remove(guild):
-    database.removeFromGuild(guild)
+    with open("json/guild/guilds.json", "r") as f:
+        guilds = json.load(f)
 
+    guilds.pop(f'{guild.id}')
+
+    with open("json/guild/guilds.json", "w") as f:
+        json.dump(guilds, f)
+
+    with open("json/guild/settings.json", "r") as f:
+        settings = json.load(f)
+
+    settings.pop(f'{guild.id}')
+
+    with open("json/guild/settings.json", "w") as f:
+        json.dump(settings, f)
 
 @bot.event
 async def on_guild_emojis_update(guild, before, after, ):
@@ -112,9 +139,25 @@ async def levelUpUser(users, user, message):
         await message.channel.send(f"{user.mention} has leveled up to {users[f'{user.id}']['level']}")
 
 
+async def updateSettings(settings, guild):
+    if not f'{guild.id}' in settings:
+        settings[f'{guild.id}'] = {}
+        settings[f'{guild.id}']['prefix'] = "."
+
+
 async def updateGuild(guilds, guild):
+    with open("json/guild/settings.json", 'r') as f:
+        settings = json.load(f)
+
+    await updateSettings(settings, guild)
+
+    with open("json/guild/settings.json", 'w') as f:
+        json.dump(settings, f)
+
     if not f'{guild.id}' in guilds:
         guilds[f'{guild.id}'] = {}
+        guilds[f'{guild.id}']['members'] = guild.member_count
+        guilds[f'{guild.id}']['votes'] = 0
 
 @bot.command()
 async def add(ctx, left: int, right: int):
@@ -232,5 +275,17 @@ async def help(ctx):
 
     await channel.send(embed=embed)
 
+
+@bot.command()
+async def changeprefix(ctx, p):
+    with open("json/guild/settings.json", "r") as f:
+        settings = json.load(f)
+
+    settings[f'{ctx.guild.id}']['prefix'] = p
+
+    with open("json/guild/settings.json", "w") as f:
+        json.dump(settings, f)
+
+    await ctx.send(f"Prefix changed to {p}")
 
 bot.run(TOKEN)
