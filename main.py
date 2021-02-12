@@ -10,8 +10,6 @@ import json
 
 import random
 
-import database
-
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
@@ -29,12 +27,10 @@ intents.emojis = True
 def get_prefix(client, message):
     with open("json/guild/settings.json", 'r') as f:
         settings = json.load(f)
-    print("dostal jsem se sem :)")
-
     return str(settings[f'{message.guild.id}']['prefix'])
 
-
 bot = commands.Bot(command_prefix=get_prefix, description=description, intents=intents)
+
 bot.remove_command('help')
 
 
@@ -45,6 +41,7 @@ async def on_ready():
     print(bot.user.id)
     print("Connected to: {}".format(len(bot.guilds)))
     print('------')
+    await bot.change_presence(activity=discord.Game(name=".help"))
 
 
 @bot.event
@@ -55,7 +52,7 @@ async def on_guild_join(guild):
     await updateGuild(guilds, guild)
 
     with open("json/guild/guilds.json", "w") as f:
-        json.dump(guilds,f)
+        json.dump(guilds, f)
     await on_ready()
 
 
@@ -77,21 +74,22 @@ async def on_guild_remove(guild):
     with open("json/guild/settings.json", "w") as f:
         json.dump(settings, f)
 
-@bot.event
-async def on_guild_emojis_update(guild, before, after, ):
-    if len(before) > len(after):
-        missing = discord.Emoji
-        for emojiBefore in before:
-            if emojiBefore not in after:
-                missing = emojiBefore
-        database.removeEmoji(missing)
-    elif len(before) == len(after):
-        missing = discord.Emoji
-        for emojiBefore in before:
-            for emojiAfter in after:
-                if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
-                    missing = emojiAfter
-        database.addEmoji(guild, missing)
+# TODO Rewrite into JSON
+# @bot.event
+# async def on_guild_emojis_update(guild, before, after, ):
+#     if len(before) > len(after):
+#         missing = discord.Emoji
+#         for emojiBefore in before:
+#             if emojiBefore not in after:
+#                 missing = emojiBefore
+#         database.removeEmoji(missing)
+#     elif len(before) == len(after):
+#         missing = discord.Emoji
+#         for emojiBefore in before:
+#             for emojiAfter in after:
+#                 if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
+#                     missing = emojiAfter
+#         database.addEmoji(guild, missing)
 
 
 @bot.event
@@ -103,20 +101,23 @@ async def on_member_join(member):
 
     with open("json/user/users.json", 'w') as f:
         json.dump(f)
-    database.addUser(member)
 
 
 @bot.event
 async def on_message(message):
-    with open("json/user/users.json", 'r') as f:
-        users = json.load(f)
+    if message.content.startswith(get_prefix(bot, message)) and not message.author.bot:
+        with open("json/user/users.json", 'r') as f:
+             users = json.load(f)
 
-    await updateUserData(users, message.author)
-    await addUserExperience(users, message.author)
-    await levelUpUser(users, message.author, message)
+        await updateUserData(users, message.author)
+        await addUserExperience(users, message.author)
+        await levelUpUser(users, message.author, message)
 
-    with open("json/user/users.json", 'w') as f:
-        json.dump(users, f)
+        with open("json/user/users.json", 'w') as f:
+             json.dump(users, f)
+
+    await bot.process_commands(message)
+
 
 
 async def updateUserData(users, user):
@@ -214,9 +215,9 @@ async def _bot(ctx):
     await ctx.send('Yes, the bot is cool.')
 
 
-@bot.command()
-async def test(ctx):
-    database.registerToDB(ctx.message.guild)
+# @bot.command()
+# async def test(ctx):
+#     database.registerToDB(ctx.message.guild)
 
 
 @bot.command(description="Send random Gif by query")
@@ -248,13 +249,13 @@ async def gif(ctx, *choice: str):
                 print("invalid gif query")
                 await(ctx.send("Invalid Query or non-existing gif"))
 
-
-@bot.command(pass_context=True, description="Sends random emoji from random Discord")
-async def randomEmoji(ctx):
-    emojis = database.query("SELECT * FROM Emoji WHERE NOT Guild_id=4")
-    rndNumber = random.randrange(0, len(emojis))
-    await ctx.message.delete()
-    await ctx.send(emojis[rndNumber][1])
+# TODO Rewrite into JSON
+# @bot.command(pass_context=True, description="Sends random emoji from random Discord")
+# async def randomEmoji(ctx):
+#     emojis = database.query("SELECT * FROM Emoji WHERE NOT Guild_id=4")
+#     rndNumber = random.randrange(0, len(emojis))
+#     await ctx.message.delete()
+#     await ctx.send(emojis[rndNumber][1])
 
 
 @bot.command(pass_context=True)
@@ -262,7 +263,8 @@ async def help(ctx):
     channel = ctx.message.channel
 
     embed = discord.Embed(
-        colour=discord.Colour.purple()
+        colour=discord.Colour.purple(),
+        description="Help is currently WIP"
     )
 
     embed.set_author(name='Commands and Stuff')
@@ -272,7 +274,7 @@ async def help(ctx):
                 desc = "WIP"
             else:
                 desc = command.description
-            embed.add_field(name='{}{}'.format(bot.command_prefix, command.name), value=desc, inline=True)
+            embed.add_field(name='{}{}'.format(get_prefix(bot, ctx.message), command.name), value=desc, inline=True)
 
     await channel.send(embed=embed)
 
