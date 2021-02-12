@@ -29,6 +29,7 @@ intents.emojis = True
 def get_prefix(client, message):
     with open("json/guild/settings.json", 'r') as f:
         settings = json.load(f)
+    print("dostal jsem se sem :)")
 
     return str(settings[f'{message.guild.id}']['prefix'])
 
