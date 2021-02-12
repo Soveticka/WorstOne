@@ -46,6 +46,7 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
+    # Takes care of adding newly joined guilds into the json
     with open("json/guild/guilds.json", "r") as f:
         guilds = json.load(f)
 
@@ -53,7 +54,16 @@ async def on_guild_join(guild):
 
     with open("json/guild/guilds.json", "w") as f:
         json.dump(guilds, f)
-    await on_ready()
+
+    # Take care of adding emojis from newly joined guilds into the json file
+    with open("json/guild/emojis.json", "r") as f:
+        emojis = json.load(f)
+
+    await updateEmoji(emojis, guild)
+
+    with open("json/guild/emojis.json", "w") as f:
+        json.dump(emojis, f)
+
 
 
 @bot.event
@@ -74,22 +84,50 @@ async def on_guild_remove(guild):
     with open("json/guild/settings.json", "w") as f:
         json.dump(settings, f)
 
-# TODO Rewrite into JSON
-# @bot.event
-# async def on_guild_emojis_update(guild, before, after, ):
-#     if len(before) > len(after):
-#         missing = discord.Emoji
-#         for emojiBefore in before:
-#             if emojiBefore not in after:
-#                 missing = emojiBefore
-#         database.removeEmoji(missing)
-#     elif len(before) == len(after):
-#         missing = discord.Emoji
-#         for emojiBefore in before:
-#             for emojiAfter in after:
-#                 if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
-#                     missing = emojiAfter
-#         database.addEmoji(guild, missing)
+    with open("json/guild/emojis.json", "r") as f:
+        emojis = json.load(f)
+
+    emojis.pop(f'{guild.id}')
+
+    with open("json/guild/settings.json", "w") as f:
+        json.dump(emojis, f)
+
+# TODO Rewrite into JSON -> Should be done
+@bot.event
+async def on_guild_emojis_update(guild, before, after, ):
+    with open("json/guild/emojis.json", "r") as f:
+        emojis = json.load(f)
+
+    missing = discord.Emoji
+    if len(before) > len(after):
+        for emojiBefore in before:
+            if emojiBefore not in after:
+                missing = emojiBefore
+        await removeEmoji(emojis, missing)
+
+    elif len(before) == len(after):
+        for emojiBefore in before:
+            for emojiAfter in after:
+                if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
+                    missing = emojiAfter
+        await editEmoji(emojis, missing, guild)
+
+    with open("json/guild/emojis.json", "w") as f:
+        json.dump(emojis, f)
+
+    # if len(before) > len(after):
+    #     missing = discord.Emoji
+    #     for emojiBefore in before:
+    #         if emojiBefore not in after:
+    #             missing = emojiBefore
+    #     database.removeEmoji(missing)
+    # elif len(before) == len(after):
+    #     missing = discord.Emoji
+    #     for emojiBefore in before:
+    #         for emojiAfter in after:
+    #             if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
+    #                 missing = emojiAfter
+    #     database.addEmoji(guild, missing)
 
 
 @bot.event
@@ -161,6 +199,40 @@ async def updateGuild(guilds, guild):
         guilds[f'{guild.id}']['members'] = guild.member_count
         guilds[f'{guild.id}']['votes'] = 0
 
+
+async def updateEmoji(emojis, guild):
+    if not f'{guild.id}' in emojis:
+        # emojis['id'] = f'{len(emojis)}'
+        emojis[f'{guild.id}'] = {}
+        for emoji in guild.emojis:
+            emojis[f'{guild.id}'][f'{emoji.id}'] = {}
+            if emoji.animated:
+                emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<a:{emoji.name}:{emoji.id}>'
+            else:
+                emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<:{emoji.name}:{emoji.id}>'
+            emojis[f'{guild.id}'][f'{emoji.id}']['emojiName'] = f':{emoji.name}:'
+
+
+async def removeEmoji(emojis, emoji):
+    emojis.pop(f'{emoji.id}')
+
+
+async def addEmoji(emojis, emoji, guild):
+    emojis[f'{guild.id}'][f'{emoji.id}'] = {}
+    if emoji.animated:
+        emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<a:{emoji.name}:{emoji.id}>'
+    else:
+        emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<:{emoji.name}:{emoji.id}>'
+    emojis[f'{guild.id}'][f'{emoji.id}']['emojiName'] = f':{emoji.name}:'
+
+
+async def editEmoji(emojis, emoji, guild):
+    if emoji.animated:
+        emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<a:{emoji.name}:{emoji.id}>'
+    else:
+        emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<:{emoji.name}:{emoji.id}>'
+    emojis[f'{guild.id}'][f'{emoji.id}']['emojiName'] = f':{emoji.name}:'
+
 @bot.command()
 async def add(ctx, left: int, right: int):
     """Adds two numbers together."""
@@ -215,10 +287,10 @@ async def _bot(ctx):
     await ctx.send('Yes, the bot is cool.')
 
 
-# @bot.command()
-# async def test(ctx):
-#     database.registerToDB(ctx.message.guild)
-
+@bot.command()
+async def test(ctx):
+    guilds = bot.guilds
+    print(guilds)
 
 @bot.command(description="Send random Gif by query")
 async def gif(ctx, *choice: str):
@@ -250,12 +322,25 @@ async def gif(ctx, *choice: str):
                 await(ctx.send("Invalid Query or non-existing gif"))
 
 # TODO Rewrite into JSON
-# @bot.command(pass_context=True, description="Sends random emoji from random Discord")
-# async def randomEmoji(ctx):
-#     emojis = database.query("SELECT * FROM Emoji WHERE NOT Guild_id=4")
-#     rndNumber = random.randrange(0, len(emojis))
-#     await ctx.message.delete()
-#     await ctx.send(emojis[rndNumber][1])
+#   - Somewhat working, but really badly
+#   - Needs to remove emojis from guild '808738863823847427'
+@bot.command(pass_context=True, description="Sends random emoji from random Discord")
+async def randomEmoji(ctx):
+    guilds = bot.guilds
+    randomGuild = guilds[random.randrange(0, len(guilds))]
+    guildEmojis = randomGuild.emojis
+    randomEmoji = guildEmojis[random.randrange(0, len(guildEmojis))]
+
+    with open("json/guild/emojis.json", "r") as f:
+        emojis = json.load(f)
+
+    await ctx.message.delete()
+    await ctx.send(emojis[f'{randomGuild.id}'][f'{randomEmoji.id}']['emojiIID'])
+
+    # emojis = database.query("SELECT * FROM Emoji WHERE NOT Guild_id=4")
+    # rndNumber = random.randrange(0, len(emojis))
+    # await ctx.message.delete()
+    # await ctx.send(emojis[rndNumber][1])
 
 
 @bot.command(pass_context=True)
