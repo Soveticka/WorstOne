@@ -29,6 +29,7 @@ def get_prefix(client, message):
         settings = json.load(f)
     return str(settings[f'{message.guild.id}']['prefix'])
 
+
 bot = commands.Bot(command_prefix=get_prefix, description=description, intents=intents)
 
 bot.remove_command('help')
@@ -53,7 +54,7 @@ async def on_guild_join(guild):
     await updateGuild(guilds, guild)
 
     with open("json/guild/guilds.json", "w") as f:
-        json.dump(guilds, f)
+        json.dump(guilds, f, indent=4)
 
     # Take care of adding emojis from newly joined guilds into the json file
     with open("json/guild/emojis.json", "r") as f:
@@ -62,8 +63,7 @@ async def on_guild_join(guild):
     await updateEmoji(emojis, guild)
 
     with open("json/guild/emojis.json", "w") as f:
-        json.dump(emojis, f)
-
+        json.dump(emojis, f, indent=4)
 
 
 @bot.event
@@ -74,7 +74,7 @@ async def on_guild_remove(guild):
     guilds.pop(f'{guild.id}')
 
     with open("json/guild/guilds.json", "w") as f:
-        json.dump(guilds, f)
+        json.dump(guilds, f, indent=4)
 
     with open("json/guild/settings.json", "r") as f:
         settings = json.load(f)
@@ -82,7 +82,7 @@ async def on_guild_remove(guild):
     settings.pop(f'{guild.id}')
 
     with open("json/guild/settings.json", "w") as f:
-        json.dump(settings, f)
+        json.dump(settings, f, indent=4)
 
     with open("json/guild/emojis.json", "r") as f:
         emojis = json.load(f)
@@ -90,7 +90,8 @@ async def on_guild_remove(guild):
     emojis.pop(f'{guild.id}')
 
     with open("json/guild/settings.json", "w") as f:
-        json.dump(emojis, f)
+        json.dump(emojis, f, indent=4)
+
 
 # TODO Rewrite into JSON -> Should be done
 @bot.event
@@ -113,7 +114,7 @@ async def on_guild_emojis_update(guild, before, after, ):
         await editEmoji(emojis, missing, guild)
 
     with open("json/guild/emojis.json", "w") as f:
-        json.dump(emojis, f)
+        json.dump(emojis, f, indent=4)
 
     # if len(before) > len(after):
     #     missing = discord.Emoji
@@ -138,42 +139,50 @@ async def on_member_join(member):
     await updateUserData(users, member)
 
     with open("json/user/users.json", 'w') as f:
-        json.dump(f)
+        json.dump(users, f, indent=4)
 
 
 @bot.event
 async def on_message(message):
-    if message.content.startswith(get_prefix(bot, message)) and not message.author.bot:
+    if not message.author.bot:
         with open("json/user/users.json", 'r') as f:
-             users = json.load(f)
+            users = json.load(f)
 
-        await updateUserData(users, message.author)
-        await addUserExperience(users, message.author)
+        await updateUserData(users, message)
+        await addUserExperience(users, message)
         await levelUpUser(users, message.author, message)
 
         with open("json/user/users.json", 'w') as f:
-             json.dump(users, f)
+            json.dump(users, f, indent=4)
 
     await bot.process_commands(message)
 
 
-
-async def updateUserData(users, user):
+async def updateUserData(users, message):
+    user = message.author
     if not f'{user.id}' in users:
         users[f'{user.id}'] = {}
         users[f'{user.id}']['experience'] = 0
         users[f'{user.id}']['level'] = 1
 
 
-async def addUserExperience(users, user):
-    users[f'{user.id}']['experience'] += 1
+# TODO - Booster user should get 2times the amount of experience
+#   - Currently not working because message.author isn't compared correctly with the premium_subscribers
+#   - Possible fix - go through the list with for, and if there is match change to true else false
+#   - Probably would be great to store XP settings in the config file
+#   - Would be great to have some sort of list of levels to like 10, then exponential increase in amount of experience needed
 
+async def addUserExperience(users, message):
+    if message.author in message.guild.premium_subscribers:
+        users[f'{message.author.id}']['experience'] += 2
+    else:
+        users[f'{message.author.id}']['experience'] += 1
 
 async def levelUpUser(users, user, message):
     exp = users[f'{user.id}']['experience']
     lvStart = users[f'{user.id}']['level']
-    lvEnd = int(exp ** (1/4))
-    if(lvStart < lvEnd):
+    lvEnd = int(exp ** (1 / 4))
+    if (lvStart < lvEnd):
         users[f'{user.id}']['level'] += 1
         users[f'{user.id}']['experience'] = 0
         await message.channel.send(f"{user.mention} has leveled up to {users[f'{user.id}']['level']}")
@@ -192,7 +201,7 @@ async def updateGuild(guilds, guild):
     await updateSettings(settings, guild)
 
     with open("json/guild/settings.json", 'w') as f:
-        json.dump(settings, f)
+        json.dump(settings, f, indent=4)
 
     if not f'{guild.id}' in guilds:
         guilds[f'{guild.id}'] = {}
@@ -232,6 +241,7 @@ async def editEmoji(emojis, emoji, guild):
     else:
         emojis[f'{guild.id}'][f'{emoji.id}']['emojiIID'] = f'<:{emoji.name}:{emoji.id}>'
     emojis[f'{guild.id}'][f'{emoji.id}']['emojiName'] = f':{emoji.name}:'
+
 
 @bot.command()
 async def add(ctx, left: int, right: int):
@@ -289,19 +299,32 @@ async def _bot(ctx):
 
 @bot.command()
 async def test(ctx):
-    guilds = bot.guilds
-    print(guilds)
+    await ctx.message.delete()
+    embed = discord.Embed(
+        colour=discord.Colour.purple(),
+        description="Help is currently WIP"
+    )
+    embed.set_author(name="Test")
+    embed.set_image(url="https://media2.giphy.com/media/tGbhyv8Wmi4EM/giphy.gif")
+    embed.set_footer(text=f"Requested by {ctx.message.author}", icon_url=ctx.message.author.avatar_url)
+
+    await ctx.channel.send(embed=embed)
+
 
 @bot.command(description="Send random Gif by query")
 async def gif(ctx, *choice: str):
     await ctx.message.delete()
+    embed = discord.Embed(
+        colour=discord.Colour.random()
+    )
+    embed.set_footer(text=f"Requested by: {ctx.message.author}", icon_url=ctx.message.author.avatar_url)
     url = "http://api.giphy.com/v1/gifs/search"
     limit = 25
     separator = "-"
     if len(choice) == 0:
-        gifUrl = "https://giphy.com/gifs/confused-travolta-poor-wallet-3o6UB5RrlQuMfZp82Y"
+        embed.set_image(url="https://giphy.com/gifs/confused-travolta-poor-wallet-3o6UB5RrlQuMfZp82Y")
 
-        await ctx.send("Next time add some query text ❤️")
+        await ctx.channel.send(embed=embed)
     else:
         choice = separator.join(choice) if len(choice) >= 2 else choice[0]
         params = urllib.parse.urlencode({
@@ -315,11 +338,13 @@ async def gif(ctx, *choice: str):
         with urllib.request.urlopen(url + "?" + params) as response:
             data = json.loads(response.read())
             if len(data['data']) > 0:
-                gifUrl = data['data'][rnd]['url']
-                await ctx.send(gifUrl)
+                gifUrl = f"https://media1.giphy.com/media/{data['data'][rnd]['id']}/giphy.gif"
+                embed.set_image(url=gifUrl)
+                await ctx.channel.send(embed=embed)
             else:
                 print("invalid gif query")
                 await(ctx.send("Invalid Query or non-existing gif"))
+
 
 # TODO Rewrite into JSON
 #   - Somewhat working, but really badly
@@ -369,11 +394,15 @@ async def changeprefix(ctx, p):
     with open("json/guild/settings.json", "r") as f:
         settings = json.load(f)
 
+    if len(p) != 1:
+        p = p+" "
     settings[f'{ctx.guild.id}']['prefix'] = p
 
     with open("json/guild/settings.json", "w") as f:
-        json.dump(settings, f)
+        json.dump(settings, f, indent=4)
 
-    await ctx.send(f"Prefix changed to {p}")
+    await ctx.send(f"{ctx.author.mention} Prefix changed to {p}")
+
+
 
 bot.run(TOKEN)
