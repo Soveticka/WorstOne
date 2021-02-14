@@ -1,14 +1,29 @@
 {
-  "448082399104991234": {
-    "members": 7,
-    "votes": 0
-  },
-  "189110260525432832": {
-    "members": 73,
-    "votes": 0
-  },
-  "808738863823847427": {
-    "members": 2,
-    "votes": 0
-  }
+    "189110260525432832": {
+        "members": 73,
+        "votes": 0,
+        "settings": {
+            "prefix": ".",
+            "xpgain": 1,
+            "boosterxpgain": 2
+        }
+    },
+    "448082399104991234": {
+        "members": 7,
+        "votes": 0,
+        "settings": {
+            "prefix": ".",
+            "xpgain": 1,
+            "boosterxpgain": 2
+        }
+    },
+    "808738863823847427": {
+        "members": 2,
+        "votes": 0,
+        "settings": {
+            "prefix": ".",
+            "xpgain": 1,
+            "boosterxpgain": 2
+        }
+    }
 }
