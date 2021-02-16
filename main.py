@@ -474,6 +474,7 @@ async def help(ctx):
 
 @help.command(name="nsfw")
 async def _nsfw(ctx):
+    ctx.message.delete()
     normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
               "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
               "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
@@ -523,7 +524,7 @@ async def _nsfw(ctx):
         return user == ctx.message.author and str(reaction.emoji) == u"\u274C"
 
     try:
-        reaction, user = await bot.wait_for('reaction_add', timeout=None, check=check)
+        reaction, user = await bot.wait_for('reaction_add', timeout=60, check=check)
     except asyncio.TimeoutError:
         await message.delete()
     else:
