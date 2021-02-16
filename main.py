@@ -32,7 +32,7 @@ def get_prefix(client, message):
     return str(guilds[f'{message.guild.id}']['settings']['prefix'])
 
 
-bot = commands.Bot(command_prefix=".", description=description, intents=intents)
+bot = commands.Bot(command_prefix=get_prefix, description=description, intents=intents)
 
 bot.remove_command('help')
 
