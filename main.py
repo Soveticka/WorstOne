@@ -339,6 +339,7 @@ async def randomEmoji(ctx):
     await ctx.message.delete()
     await ctx.send(emojis[f'{randomGuild.id}'][f'{randomEmoji.id}']['emojiIID'])
 
+
 @bot.command()
 async def changeprefix(ctx, p):
     with open("json/guild/guilds.json", "r") as f:
@@ -359,11 +360,11 @@ async def nsfw(ctx, query="list", mode=""):
     normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
               "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
               "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
-              "onlyfans101", "biggerthanyouthought", "nsfw_japan"]
-    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri"]
+              "onlyfans101", "biggerthanyouthought", "nsfw_japan", "juicyasians", "cosplaygirls", "nsfwcosplay"]
+    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri", "monstergirl",
+              "nintendowaifus", "hentaibondage", "cosplaygirls", "nsfwcosplay", "thick_hentai"]
     all = normal + hentai
     channel = ctx.channel
-
 
     reddit = asyncpraw.Reddit(
         client_id="p18AlHfMXRP79Q",
@@ -379,10 +380,10 @@ async def nsfw(ctx, query="list", mode=""):
         elif query == "random" or query in normal or query in hentai:
             if query in normal:
                 subreddit = await reddit.subreddit(query)
-                title=query
+                title = query
             elif query in hentai:
                 subreddit = await reddit.subreddit(query)
-                title=query
+                title = query
 
             elif query == "random":
                 if mode == "real":
@@ -449,7 +450,7 @@ async def clear(ctx, amount=5):
     await ctx.channel.purge(limit=amount + 1)
 
 
-#@bot.command(pass_context=True)
+# @bot.command(pass_context=True)
 @bot.group()
 async def help(ctx):
     if ctx.invoked_subcommand is None:
@@ -474,12 +475,12 @@ async def help(ctx):
 
 @help.command(name="nsfw")
 async def _nsfw(ctx):
-    await ctx.message.delete()
     normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
               "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
               "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
-              "onlyfans101", "biggerthanyouthought", "nsfw_japan"]
-    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri"]
+              "onlyfans101", "biggerthanyouthought", "nsfw_japan", "juicyasians", "cosplaygirls", "nsfwcosplay"]
+    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri", "monstergirl",
+              "nintendowaifus", "hentaibondage", "cosplaygirls", "nsfwcosplay", "thick_hentai"]
     prefix = get_prefix(bot, ctx.message)
     embed = discord.Embed(
         colour=discord.Colour.purple(),
