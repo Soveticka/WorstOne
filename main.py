@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import discord
@@ -57,7 +58,7 @@ async def on_guild_join(guild):
     with open("json/guild/guilds.json", "w") as f:
         json.dump(guilds, f, indent=4)
 
-    # Take care of adding emojis from newly joined guilds into the json file
+    # Takes care of adding emojis from newly joined guilds into the json file
     with open("json/guild/emojis.json", "r") as f:
         emojis = json.load(f)
 
@@ -109,20 +110,6 @@ async def on_guild_emojis_update(guild, before, after, ):
     with open("json/guild/emojis.json", "w") as f:
         json.dump(emojis, f, indent=4)
 
-    # if len(before) > len(after):
-    #     missing = discord.Emoji
-    #     for emojiBefore in before:
-    #         if emojiBefore not in after:
-    #             missing = emojiBefore
-    #     database.removeEmoji(missing)
-    # elif len(before) == len(after):
-    #     missing = discord.Emoji
-    #     for emojiBefore in before:
-    #         for emojiAfter in after:
-    #             if emojiBefore.id == emojiAfter.id and emojiBefore.name != emojiAfter.name:
-    #                 missing = emojiAfter
-    #     database.addEmoji(guild, missing)
-
 
 @bot.event
 async def on_member_join(member):
@@ -137,21 +124,23 @@ async def on_member_join(member):
 
 @bot.event
 async def on_message(message):
-    with open("json/user/users.json", 'r') as f:
-        users = json.load(f)
+    try:
+        with open("json/user/users.json", 'r') as f:
+            users = json.load(f)
 
-    await updateUserData(users, message)
-    # await addUserExperience(users, message)
-    await levelUpUser(users, message.author, message)
+        await updateUserData(users, message.author)
+        # await addUserExperience(users, message)
+        await levelUpUser(users, message.author, message)
 
-    with open("json/user/users.json", 'w') as f:
-        json.dump(users, f, indent=4)
+        with open("json/user/users.json", 'w') as f:
+            json.dump(users, f, indent=4)
+    except ValueError:
+        print("Problem with json.load()")
 
     await bot.process_commands(message)
 
 
-async def updateUserData(users, message):
-    user = message.author
+async def updateUserData(users, user):
     if not f'{user.id}' in users:
         users[f'{user.id}'] = {}
         users[f'{user.id}']['experience'] = 0
@@ -350,33 +339,6 @@ async def randomEmoji(ctx):
     await ctx.message.delete()
     await ctx.send(emojis[f'{randomGuild.id}'][f'{randomEmoji.id}']['emojiIID'])
 
-    # emojis = database.query("SELECT * FROM Emoji WHERE NOT Guild_id=4")
-    # rndNumber = random.randrange(0, len(emojis))
-    # await ctx.message.delete()
-    # await ctx.send(emojis[rndNumber][1])
-
-
-@bot.command(pass_context=True)
-async def help(ctx):
-    channel = ctx.message.channel
-
-    embed = discord.Embed(
-        colour=discord.Colour.purple(),
-        description="Help is currently WIP"
-    )
-
-    embed.set_author(name='Commands and Stuff')
-    for command in bot.commands:
-        if command.name != bot:
-            if command.description == "":
-                desc = "WIP"
-            else:
-                desc = command.description
-            embed.add_field(name='{}{}'.format(get_prefix(bot, ctx.message), command.name), value=desc, inline=True)
-
-    await channel.send(embed=embed)
-
-
 @bot.command()
 async def changeprefix(ctx, p):
     with open("json/guild/guilds.json", "r") as f:
@@ -392,50 +354,180 @@ async def changeprefix(ctx, p):
     await ctx.send(f"{ctx.author.mention} Prefix changed to {p}")
 
 
-@bot.command()
-async def nsfw(ctx, query="list"):
-    subreddits = {"gonewild","worldpacks","realgirls","nsfw_gif","celebnsfw","asiansgonewild","collegesluts","petitegonewild","bustypetite","legalteens","adorableporn","breedingmaterial","onlyfansgirls101","milf","porn","tiktoknsfw","pussy","boobs","tikthoks","tittydrop","gonewild30plus","OnOff","onlyfans101","BiggerThanYouThought","nsfw_japan"}
+@bot.command(description="Send NSFW image from Reddit")
+async def nsfw(ctx, query="list", mode=""):
+    normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
+              "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
+              "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
+              "onlyfans101", "biggerthanyouthought", "nsfw_japan"]
+    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri"]
+    all = normal + hentai
+    channel = ctx.channel
+
+
     reddit = asyncpraw.Reddit(
         client_id="p18AlHfMXRP79Q",
         client_secret="HwzFCkqKIOhK2nG1lONZ6y3qFQ7tKw",
         user_agent="desktop:python.DiscordBot:v0.0.1 (by u/soveticka)"
     )
-    if ctx.channel.nsfw:
-        if query in subreddits:
-            subreddit = await reddit.subreddit(query)
-            submission = await subreddit.random()
-            permalink = "https://reddit.com" + submission.permalink
-            if ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
-                embed = discord.Embed(
-                    colour=discord.Colour.random()
-                )
-                embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.message.author.avatar_url)
-                embed.set_image(url=submission.url)
-                embed.set_author(name="Clickable link", url=permalink)
 
-                if ".gifv" in submission.url:
-                    await ctx.send(submission.url)
+    if channel.nsfw:
+        if query == "list":
+            await ctx.message.delete()
+            await _nsfw(ctx)
+            return
+        elif query == "random" or query in normal or query in hentai:
+            if query in normal:
+                subreddit = await reddit.subreddit(query)
+                title=query
+            elif query in hentai:
+                subreddit = await reddit.subreddit(query)
+                title=query
+
+            elif query == "random":
+                if mode == "real":
+                    rnd = random.randrange(0, len(normal))
+                    subreddit = await reddit.subreddit(normal[rnd])
+                    title = normal[rnd]
+
+                elif mode == "hentai":
+                    rnd = random.randrange(0, len(hentai))
+                    subreddit = await reddit.subreddit(hentai[rnd])
+                    title = hentai[rnd]
+
+                elif mode == "all":
+                    rnd = random.randrange(0, len(all))
+                    subreddit = await reddit.subreddit(all[rnd])
+                    title = all[rnd]
+                elif mode == "":
+                    rnd = random.randrange(0, len(all))
+                    subreddit = await reddit.subreddit(all[rnd])
+                    title = all[rnd]
                 else:
-                    await ctx.send(embed=embed)
-            else:
-                await ctx.send(submission.url)
-        else:
-            print(":)")
+                    await ctx.message.delete()
+                    await _nsfw(ctx)
+                    return
+            try:
+                submission = await subreddit.random()
+            except Exception:
+                print("error")
+            try:
+                if ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
+                    embed = discord.Embed(
+                        colour=discord.Colour.random(),
+                        title=f"/r/{title}"
+                    )
+                    embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.message.author.avatar_url)
+                    embed.set_image(url=submission.url)
+                    permalink = "https://reddit.com" + submission.permalink
+                    embed.set_author(name="Clickable link", url=permalink)
 
+                    if ".gifv" in submission.url:
+                        await ctx.send(f"/r/{title}\n{submission.url}")
+                    else:
+                        await ctx.send(embed=embed)
+                else:
+                    await ctx.send(f"/r/{title}\n{submission.url}")
+            except AttributeError:
+                print(f"In submission were not all needed information")
+                await nsfw(ctx, query, mode)
+        else:
+            await ctx.message.delete()
+            await _nsfw(ctx)
+            return
     else:
         await ctx.send("Příkaz pošli do nsfw kanálu :)")
     await reddit.close()
-    await ctx.message.delete()
-
-
-@bot.command()
-async def reddit(ctx):
-    print(".)")
+    try:
+        await ctx.message.delete()
+    except:
+        print("No message to delete")
 
 
 @bot.command()
 async def clear(ctx, amount=5):
     await ctx.channel.purge(limit=amount + 1)
+
+
+#@bot.command(pass_context=True)
+@bot.group()
+async def help(ctx):
+    if ctx.invoked_subcommand is None:
+        channel = ctx.message.channel
+
+        embed = discord.Embed(
+            colour=discord.Colour.purple(),
+            description="Help is currently WIP"
+        )
+
+        embed.set_author(name='Commands and Stuff')
+        for command in bot.commands:
+            if command.name != bot:
+                if command.description == "":
+                    desc = "WIP"
+                else:
+                    desc = command.description
+                embed.add_field(name='{}{}'.format(get_prefix(bot, ctx.message), command.name), value=desc, inline=True)
+
+        await channel.send(embed=embed)
+
+
+@help.command(name="nsfw")
+async def _nsfw(ctx):
+    normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
+              "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
+              "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
+              "onlyfans101", "biggerthanyouthought", "nsfw_japan"]
+    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri"]
+    prefix = get_prefix(bot, ctx.message)
+    embed = discord.Embed(
+        colour=discord.Colour.purple(),
+        title="NSFW"
+    )
+
+    normalString = ""
+    for i in range(len(normal)):
+        if i == len(normal) - 1:
+            normalString += f"`{normal[i]}`"
+        else:
+            normalString += f"`{normal[i]}`, "
+    embed.add_field(name='Real Women', value=normalString, inline=False)
+
+    hentaiString = ""
+    for i in range(len(hentai)):
+        if i == len(hentai) - 1:
+            hentaiString += f"`{hentai[i]}`"
+        else:
+            hentaiString += f"`{hentai[i]}`, "
+    embed.add_field(name='Hentai', value=hentaiString, inline=False)
+
+    randomString = "`real`, `hentai`, `all`"
+    embed.add_field(name='Random Modes', value=randomString, inline=False)
+
+    examples = f"{prefix}nsfw list\n" \
+               f"{prefix}nsfw boobs\n" \
+               f"{prefix}nsfw random hentai"
+    embed.add_field(name='Examples', value=examples, inline=False)
+
+    howtouse = "```html\n" \
+               "<list>\n" \
+               "<subreddit>\n" \
+               "<random> <mode>" \
+               "```"
+    embed.add_field(name="Command's signature", value=howtouse, inline=False)
+
+    message = await ctx.message.channel.send(embed=embed)
+    await message.add_reaction(u"\u274C")
+
+    def check(reaction, user):
+        return user == ctx.message.author and str(reaction.emoji) == u"\u274C"
+
+    try:
+        reaction, user = await bot.wait_for('reaction_add', timeout=None, check=check)
+    except asyncio.TimeoutError:
+        await message.delete()
+    else:
+        await message.delete()
 
 
 bot.run(TOKEN)
