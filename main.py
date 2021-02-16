@@ -474,6 +474,7 @@ async def help(ctx):
 
 @help.command(name="nsfw")
 async def _nsfw(ctx):
+    await ctx.message.delete()
     normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
               "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
               "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
