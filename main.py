@@ -1,9 +1,13 @@
 import asyncio
 import os
+from itertools import cycle
 
 import discord
+from variables import variables
 
-from discord.ext import commands
+from discord.ext import commands, tasks
+from discord.ext.commands.cooldowns import BucketType
+from discord import errors
 from dotenv import load_dotenv
 
 import urllib
@@ -32,6 +36,8 @@ def get_prefix(client, message):
     return str(guilds[f'{message.guild.id}']['settings']['prefix'])
 
 
+picturelist = os.listdir("./img/profile/")
+pictures = cycle(picturelist)
 bot = commands.Bot(command_prefix=get_prefix, description=description, intents=intents)
 
 bot.remove_command('help')
@@ -44,7 +50,21 @@ async def on_ready():
     print(bot.user.id)
     print("Connected to: {}".format(len(bot.guilds)))
     print('------')
+    randomprofile.start()
     await bot.change_presence(activity=discord.Game(name=".help"))
+
+
+async def errormessage(ctx, error=None):
+    await ctx.send(f"{ctx.author.mention} You don't have permissions to use {ctx.message.content}")
+
+
+@tasks.loop(minutes=15)
+async def randomprofile():
+    picture = next(pictures)
+    fp = open(f"./img/profile/{picture}", "rb")
+    fpf = fp.read()
+    await bot.user.edit(avatar=fpf)
+    print("Avatar Changed")
 
 
 @bot.event
@@ -223,6 +243,21 @@ async def editEmoji(emojis, emoji, guild):
 
 
 @bot.command()
+async def load(ctx, extension):
+    bot.load_extension(f'cogs.{extension}')
+
+
+@bot.command()
+async def unload(ctx, extension):
+    bot.unload_extension(f'cogs.{extension}')
+
+
+for filename in os.listdir('./cogs'):
+    if filename.endswith('.py'):
+        bot.load_extension(f'cogs.{filename[:-3]}')
+
+
+@bot.command()
 async def add(ctx, left: int, right: int):
     """Adds two numbers together."""
     await ctx.send(left + right)
@@ -342,112 +377,32 @@ async def randomEmoji(ctx):
 
 @bot.command()
 async def changeprefix(ctx, p):
-    with open("json/guild/guilds.json", "r") as f:
-        guilds = json.load(f)
+    await ctx.message.delete()
+    if ctx.author == ctx.guild.owner:
+        with open("json/guild/guilds.json", "r") as f:
+            guilds = json.load(f)
 
-    if len(p) != 1:
-        p = p + " "
-    guilds[f'{ctx.guild.id}']['settings']['prefix'] = p
+        if len(p) != 1:
+            p = p + " "
+        guilds[f'{ctx.guild.id}']['settings']['prefix'] = p
 
-    with open("json/guild/guilds.json", "w") as f:
-        json.dump(guilds, f, indent=4)
+        with open("json/guild/guilds.json", "w") as f:
+            json.dump(guilds, f, indent=4)
 
-    await ctx.send(f"{ctx.author.mention} Prefix changed to {p}")
-
-
-@bot.command(description="Send NSFW image from Reddit")
-async def nsfw(ctx, query="list", mode=""):
-    normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
-              "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
-              "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
-              "onlyfans101", "biggerthanyouthought", "nsfw_japan", "juicyasians", "cosplaygirls", "nsfwcosplay"]
-    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri", "monstergirl",
-              "nintendowaifus", "hentaibondage", "cosplaygirls", "nsfwcosplay", "thick_hentai"]
-    all = normal + hentai
-    channel = ctx.channel
-
-    reddit = asyncpraw.Reddit(
-        client_id="p18AlHfMXRP79Q",
-        client_secret="HwzFCkqKIOhK2nG1lONZ6y3qFQ7tKw",
-        user_agent="desktop:python.DiscordBot:v0.0.1 (by u/soveticka)"
-    )
-
-    if channel.nsfw:
-        if query == "list":
-            await ctx.message.delete()
-            await _nsfw(ctx)
-            return
-        elif query == "random" or query in normal or query in hentai:
-            if query in normal:
-                subreddit = await reddit.subreddit(query)
-                title = query
-            elif query in hentai:
-                subreddit = await reddit.subreddit(query)
-                title = query
-
-            elif query == "random":
-                if mode == "real":
-                    rnd = random.randrange(0, len(normal))
-                    subreddit = await reddit.subreddit(normal[rnd])
-                    title = normal[rnd]
-
-                elif mode == "hentai":
-                    rnd = random.randrange(0, len(hentai))
-                    subreddit = await reddit.subreddit(hentai[rnd])
-                    title = hentai[rnd]
-
-                elif mode == "all":
-                    rnd = random.randrange(0, len(all))
-                    subreddit = await reddit.subreddit(all[rnd])
-                    title = all[rnd]
-                elif mode == "":
-                    rnd = random.randrange(0, len(all))
-                    subreddit = await reddit.subreddit(all[rnd])
-                    title = all[rnd]
-                else:
-                    await ctx.message.delete()
-                    await _nsfw(ctx)
-                    return
-            try:
-                submission = await subreddit.random()
-            except Exception:
-                print("error")
-            try:
-                if ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
-                    embed = discord.Embed(
-                        colour=discord.Colour.random(),
-                        title=f"/r/{title}"
-                    )
-                    embed.set_footer(text=f"Requested by: {ctx.author}", icon_url=ctx.message.author.avatar_url)
-                    embed.set_image(url=submission.url)
-                    permalink = "https://reddit.com" + submission.permalink
-                    embed.set_author(name="Clickable link", url=permalink)
-
-                    if ".gifv" in submission.url:
-                        await ctx.send(f"/r/{title}\n{submission.url}")
-                    else:
-                        await ctx.send(embed=embed)
-                else:
-                    await ctx.send(f"/r/{title}\n{submission.url}")
-            except AttributeError:
-                print(f"In submission were not all needed information")
-                await nsfw(ctx, query, mode)
-        else:
-            await ctx.message.delete()
-            await _nsfw(ctx)
-            return
+        await ctx.send(f"{ctx.author.mention} Prefix changed to {p}")
     else:
-        await ctx.send("Příkaz pošli do nsfw kanálu :)")
-    await reddit.close()
-    try:
-        await ctx.message.delete()
-    except:
-        print("No message to delete")
+        await errormessage(ctx)
 
 
 @bot.command()
+@commands.has_permissions(manage_messages=True)
 async def clear(ctx, amount=5):
     await ctx.channel.purge(limit=amount + 1)
+
+@clear.error
+async def clear_error(ctx, error):
+    await ctx.message.delete()
+    await errormessage(ctx, error)
 
 
 # @bot.command(pass_context=True)
@@ -475,12 +430,9 @@ async def help(ctx):
 
 @help.command(name="nsfw")
 async def _nsfw(ctx):
-    normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", "collegesluts",
-              "petitegonewild", "bustypetite", "legalteens", "adorableporn", "breedingmaterial", "onlyfansgirls101",
-              "milf", "porn", "tiktoknsfw", "pussy", "boobs", "tikthots", "tittydrop", "gonewild30plus",
-              "onlyfans101", "biggerthanyouthought", "nsfw_japan", "juicyasians", "cosplaygirls", "nsfwcosplay"]
-    hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri", "monstergirl",
-              "nintendowaifus", "hentaibondage", "cosplaygirls", "nsfwcosplay", "thick_hentai"]
+    normal = variables.normal
+    hentai = variables.hentai
+
     prefix = get_prefix(bot, ctx.message)
     embed = discord.Embed(
         colour=discord.Colour.purple(),
@@ -531,5 +483,27 @@ async def _nsfw(ctx):
     else:
         await message.delete()
 
+
+@help.command(name="haha")
+async def _haha(ctx):
+    await ctx.send("haha help")
+
+
+@bot.command(pass_context=True)
+@commands.is_owner()
+async def globalmessage(ctx, message):
+    for guild in bot.guilds:
+        await guild.owner.send(message)
+
+@globalmessage.error
+async def globalmessage_error(ctx, error):
+    await ctx.message.delete()
+    await errormessage(ctx, error)
+
+
+@bot.command()
+@commands.cooldown(5, 30, BucketType.user)
+async def commandwithcooldown(ctx):
+    await ctx.send("cooldown command")
 
 bot.run(TOKEN)
