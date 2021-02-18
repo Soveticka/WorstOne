@@ -50,7 +50,8 @@ async def on_ready():
     print(bot.user.id)
     print("Connected to: {}".format(len(bot.guilds)))
     print('------')
-    randomprofile.start()
+    if bot.user.id != 810806752319897620:
+        randomprofile.start()
     await bot.change_presence(activity=discord.Game(name=".help"))
 
 
@@ -502,8 +503,13 @@ async def globalmessage_error(ctx, error):
 
 
 @bot.command()
-@commands.cooldown(5, 30, BucketType.user)
+@commands.cooldown(2, 30, BucketType.member)
 async def commandwithcooldown(ctx):
     await ctx.send("cooldown command")
+
+@commandwithcooldown.error
+async def commandwithcooldown_error(ctx, error):
+    await ctx.message.delete()
+    await ctx.send(error)
 
 bot.run(TOKEN)

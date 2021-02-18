@@ -4,4 +4,3 @@ normal = ["gonewild", "realgirls", "worldpacks", "celebnsfw", "asiansgonewild", 
           "onlyfans101", "biggerthanyouthought", "nsfw_japan", "juicyasians", "cosplaygirls", "nsfwcosplay"]
 hentai = ["hentai", "rule34", "hentai_gif", "animemilfs", "yuri", "monstergirl",
           "nintendowaifus", "hentaibondage", "cosplaygirls", "nsfwcosplay", "thick_hentai"]
-everything = normal + hentai
