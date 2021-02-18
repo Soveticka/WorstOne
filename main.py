@@ -503,7 +503,7 @@ async def globalmessage_error(ctx, error):
 
 
 @bot.command()
-@commands.cooldown(2, 30, BucketType.member)
+@commands.cooldown(2, 30, BucketType.user)
 async def commandwithcooldown(ctx):
     await ctx.send("cooldown command")
 

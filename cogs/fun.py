@@ -55,6 +55,8 @@ async def sendSubmission(ctx, subreddit, title):
         print(AttributeError)
         await sendSubmission(ctx, subreddit, title)
 
+    await ctx.message.delete()
+
 
 class Fun(commands.Cog):
     def __init__(self, client):
