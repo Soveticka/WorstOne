@@ -2,6 +2,7 @@ import json
 
 import discord
 from discord.ext import commands
+from discord.ext.commands import errors
 import main
 
 import asyncpraw
@@ -41,7 +42,7 @@ async def sendSubmission(ctx, subreddit, title):
     try:
         submission = await subreddit.random()
     except AttributeError:
-        await sendSubmission(ctx, subreddit, title)
+        return await sendSubmission(ctx, subreddit, title)
     try:
         if ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
             embed = discord.Embed(
@@ -58,15 +59,17 @@ async def sendSubmission(ctx, subreddit, title):
             else:
                 await ctx.send(embed=embed)
         else:
-            if "youtube" in submission.url or "discord.gg" not in submission or "xxxamazing.xyz":
-                await sendSubmission(ctx, subreddit, title)
+            if "youtube" in submission.url or "discord.gg" not in submission.url or "xxxamazing.xyz" not in submission.url:
+                return await sendSubmission(ctx, subreddit, title)
             else:
                 await ctx.send(f"/r/{title}\n{submission.url}")
     except AttributeError:
         print(AttributeError)
-        await sendSubmission(ctx, subreddit, title)
-
-    await ctx.message.delete()
+        return await sendSubmission(ctx, subreddit, title)
+    try:
+        await ctx.message.delete()
+    except commands.errors.MessageNotFound:
+        return
 
 
 class Fun(commands.Cog):
@@ -107,6 +110,7 @@ class Fun(commands.Cog):
 
             increaseUsed("random", title)
             await sendSubmission(ctx, await reddit.subreddit(title), title)
+            return
         else:
             await ctx.send(f"\u274C{ctx.author.mention} - {ctx.message.content} can be called only in nsfw channel!")
 
