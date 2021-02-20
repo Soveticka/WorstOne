@@ -1,12 +1,15 @@
+import asyncio
 import json
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import errors
 import main
+from os import remove
 
 import asyncpraw
 import random
+import requests
 
 from variables import variables
 
@@ -33,7 +36,6 @@ def increaseUsed(query, title=""):
     else:
         used[query] = 1
 
-
     with open("./variables/commandUsage.json", "w") as f:
         json.dump(used, f, indent=4)
 
@@ -44,7 +46,21 @@ async def sendSubmission(ctx, subreddit, title):
     except AttributeError:
         return await sendSubmission(ctx, subreddit, title)
     try:
-        if ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
+        if "i.imgur.com" in submission.url and ".gifv" not in submission.url:
+            r = requests.get(submission.url, allow_redirects=True)
+            name = submission.url.split('/')
+            path = "./tempFiles/" + name[3]
+            open(path, "wb").write(r.content)
+
+            print(submission.url)
+
+            await ctx.send(f"/r/{title}")
+            with open(path, "rb") as f:
+                picture = discord.File(f)
+                await ctx.send(file=picture)
+            remove(path)
+
+        elif ".png" in submission.url or ".gif" in submission.url or ".jpg" in submission.url or ".gifv" in submission.url:
             embed = discord.Embed(
                 colour=discord.Colour.random(),
                 title=f"/r/{title}"
@@ -64,7 +80,6 @@ async def sendSubmission(ctx, subreddit, title):
             else:
                 await ctx.send(f"/r/{title}\n{submission.url}")
     except AttributeError:
-        print(AttributeError)
         return await sendSubmission(ctx, subreddit, title)
     try:
         await ctx.message.delete()
@@ -75,7 +90,6 @@ async def sendSubmission(ctx, subreddit, title):
 class Fun(commands.Cog):
     def __init__(self, client):
         self.bot = client
-
 
     @commands.group(invoke_without_command=True)
     async def nsfw(self, ctx, query="", mode=""):
@@ -92,7 +106,8 @@ class Fun(commands.Cog):
                     await main._nsfw(ctx)
                     return
             else:
-                await ctx.send(f"\u274C{ctx.author.mention} - {ctx.message.content} can be called only in nsfw channel!")
+                await ctx.send(
+                    f"\u274C{ctx.author.mention} - {ctx.message.content} can be called only in nsfw channel!")
 
     @nsfw.command(name="random")
     async def _nsfw_random(self, ctx, query=""):
