@@ -52,8 +52,6 @@ async def sendSubmission(ctx, subreddit, title):
             path = "./tempFiles/" + name[3]
             open(path, "wb").write(r.content)
 
-            print(submission.url)
-
             await ctx.send(f"/r/{title}")
             with open(path, "rb") as f:
                 picture = discord.File(f)
