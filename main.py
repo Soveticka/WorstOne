@@ -50,22 +50,11 @@ async def on_ready():
     print(bot.user.id)
     print("Connected to: {}".format(len(bot.guilds)))
     print('------')
-    if bot.user.id != 810806752319897620:
-        randomprofile.start()
     await bot.change_presence(activity=discord.Game(name=".help"))
 
 
 async def errormessage(ctx, error=None):
     await ctx.send(f"{ctx.author.mention} You don't have permissions to use {ctx.message.content}")
-
-
-@tasks.loop(minutes=15)
-async def randomprofile():
-    picture = next(pictures)
-    fp = open(f"./img/profile/{picture}", "rb")
-    fpf = fp.read()
-    await bot.user.edit(avatar=fpf)
-    print("Avatar Changed")
 
 
 @bot.event

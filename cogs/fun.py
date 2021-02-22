@@ -46,13 +46,13 @@ async def sendSubmission(ctx, subreddit, title):
     except AttributeError:
         return await sendSubmission(ctx, subreddit, title)
     try:
-        if "i.imgur.com" in submission.url and ".gifv" not in submission.url:
+        if "i.imgur.com" in submission.url and (".jpg" in submission.url or ".png" in submission.url):
+            await ctx.send(f"/r/{title}")
             r = requests.get(submission.url, allow_redirects=True)
             name = submission.url.split('/')
             path = "./tempFiles/" + name[3]
             open(path, "wb").write(r.content)
 
-            await ctx.send(f"/r/{title}")
             with open(path, "rb") as f:
                 picture = discord.File(f)
                 await ctx.send(file=picture)
@@ -69,14 +69,16 @@ async def sendSubmission(ctx, subreddit, title):
             embed.set_author(name="Clickable link", url=permalink)
 
             if ".gifv" in submission.url:
-                await ctx.send(f"/r/{title}\n{submission.url}")
+                await ctx.send(f"/r/{title}\r"
+                               f"{submission.url}")
             else:
                 await ctx.send(embed=embed)
         else:
-            if "youtube" in submission.url or "discord.gg" not in submission.url or "xxxamazing.xyz" not in submission.url:
-                return await sendSubmission(ctx, subreddit, title)
+            if "redgifs" in submission.url:
+                await ctx.send(f"/r/{title}\r"
+                               f"{submission.url}")
             else:
-                await ctx.send(f"/r/{title}\n{submission.url}")
+                return await sendSubmission(ctx, subreddit, title)
     except AttributeError:
         return await sendSubmission(ctx, subreddit, title)
     try:
