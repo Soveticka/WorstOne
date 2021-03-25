@@ -1,5 +1,6 @@
 import asyncio
 import json
+import urllib
 
 import discord
 from discord.ext import commands
@@ -136,6 +137,45 @@ class Fun(commands.Cog):
             await main._nsfw(ctx)
         else:
             await ctx.send(f"\u274C{ctx.author.mention} - {ctx.message.content} can be called only in nsfw channel!")
+
+    @commands.command(description="Send random Gif by query")
+    async def gif(self, ctx, *choice: str):
+        """ Sends gif by query """
+        await ctx.message.delete()
+        embed = discord.Embed(
+            colour=discord.Colour.random()
+        )
+        embed.set_footer(text=f"Requested by: {ctx.message.author}", icon_url=ctx.message.author.avatar_url)
+        url = "http://api.giphy.com/v1/gifs/search"
+        limit = 25
+        separator = "-"
+        if len(choice) == 0:
+            embed.set_image(url="https://giphy.com/gifs/confused-travolta-poor-wallet-3o6UB5RrlQuMfZp82Y")
+
+            await ctx.channel.send(embed=embed)
+        else:
+            choice = separator.join(choice) if len(choice) >= 2 else choice[0]
+            params = urllib.parse.urlencode({
+                "q": choice,
+                "api_key": "IycawWLHRSj5jSHw2VSIQbp8SyJ0WpqZ",
+                "limit": limit,
+                "rating": "r"
+            })
+
+            rnd = random.randrange(00, limit)
+            with urllib.request.urlopen(url + "?" + params) as response:
+                data = json.loads(response.read())
+                if len(data['data']) > 0:
+                    gifUrl = f"https://media1.giphy.com/media/{data['data'][rnd]['id']}/giphy.gif"
+                    embed.set_image(url=gifUrl)
+                    await ctx.channel.send(embed=embed)
+                else:
+                    print("invalid gif query")
+                    await(ctx.send("Invalid Query or non-existing gif"))
+
+    @commands.command(name='testing')
+    async def testing(self, ctx, input="10"):
+        print(input)
 
 
 def setup(client):
